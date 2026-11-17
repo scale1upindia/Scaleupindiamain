@@ -206,9 +206,36 @@ export class ProductionEmailProvider implements EmailProvider {
       throw new EmailProviderNotConfiguredError();
     }
 
-    // In a live production environment with valid key, call actual HTTP client / SDK
-    // If not configured, it throws as checked above.
-    const providerMessageId = `sg_${Date.now()}_${crypto.randomBytes(6).toString("hex")}`;
+    const fromEmail = process.env.EMAIL_FROM || "notifications@scaleupindia.in";
+
+    // Send via Resend API (India-compatible)
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: `Scale-up India <${fromEmail}>`,
+        to: [msg.to],
+        subject: msg.subject,
+        html: msg.html,
+        text: msg.text,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new DomainError(
+        `Email delivery failed: ${response.status} ${errorBody}`,
+        502,
+        "EMAIL_DELIVERY_FAILED"
+      );
+    }
+
+    const result = await response.json() as { id?: string };
+    const providerMessageId = result.id || `resend_${Date.now()}_${crypto.randomBytes(6).toString("hex")}`;
+
     return {
       provider: this.name,
       providerMessageId,
