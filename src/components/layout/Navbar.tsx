@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
-import { LogOut, ArrowRight, LayoutDashboard, Bell, Menu, X } from "lucide-react";
+import { LogOut, ArrowRight, LayoutDashboard, Bell, Menu, X, ClipboardList } from "lucide-react";
 
 export function Navbar() {
   const { user, logout, loading } = useAuth();
@@ -90,6 +90,17 @@ export function Navbar() {
               <div className="h-9 w-24 bg-[#EEF5FB] animate-pulse rounded-lg" />
             ) : user ? (
               <div className="flex items-center gap-3">
+                {user.roles.some((r) =>
+                  ["SUPER_ADMIN", "ADMIN", "VERIFICATION_MANAGER"].includes(r)
+                ) && (
+                  <Link
+                    href="/admin/sellers"
+                    className="flex items-center gap-1.5 bg-[#0B1F3A] hover:bg-[#153864] text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-sm transition-all duration-200 border border-[#153864]"
+                  >
+                    <ClipboardList className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Admin</span>
+                  </Link>
+                )}
                 <Link
                   href="/dashboard"
                   className="flex items-center gap-2 bg-[#1557A6] hover:bg-[#2878C8] text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-sm transition-all duration-200"
