@@ -1,0 +1,38 @@
+// Scale-up India — Phase 11: Get Payment Intent Status Route
+// Path: src/app/api/v1/payment-intents/[paymentIntentId]/status/route.ts
+
+import { NextRequest } from "next/server";
+import { getSessionToken } from "@/lib/security/cookies";
+import { validateSession } from "@/domains/auth/service";
+import { assertAuthenticated } from "@/lib/security/authorization";
+import { getPaymentIntentById } from "@/domains/payments/service";
+import { apiSuccess, apiError } from "@/lib/api/response";
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ paymentIntentId: string }> }
+) {
+  try {
+    const rawToken = await getSessionToken();
+    const user = rawToken ? await validateSession(rawToken) : null;
+    assertAuthenticated(user);
+
+    const { paymentIntentId } = await params;
+    const paymentIntent = await getPaymentIntentById(user, paymentIntentId);
+
+    return apiSuccess({
+      id: paymentIntent.id,
+      referenceCode: paymentIntent.referenceCode,
+      status: paymentIntent.status,
+      amount: paymentIntent.amount,
+      currency: paymentIntent.currency,
+      refundedAmount: paymentIntent.refundedAmount,
+      completedAt: paymentIntent.completedAt,
+      cancelledAt: paymentIntent.cancelledAt,
+      tokenDepositStatus: paymentIntent.tokenDeposit?.status || null,
+      tokenDepositConfirmedAt: paymentIntent.tokenDeposit?.confirmedAt || null,
+    });
+  } catch (error) {
+    return apiError(error);
+  }
+}

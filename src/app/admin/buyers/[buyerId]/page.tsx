@@ -1,0 +1,865 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
+import { BuyerDossier, BuyerDocumentRecord, BuyerInternalNoteRecord } from "@/types/buyer";
+import {
+  Briefcase,
+  ShieldCheck,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  ArrowLeft,
+  FileText,
+  Download,
+  DollarSign,
+  Target,
+  Users,
+  ExternalLink,
+  MessageSquare,
+  Send,
+  Lock,
+  Globe,
+  Ban,
+  RefreshCw,
+  AlertTriangle,
+} from "lucide-react";
+
+export default function AdminBuyerDossierPage() {
+  const params = useParams();
+  const router = useRouter();
+  const buyerId = params.buyerId as string;
+  const { user, loading: authLoading } = useAuth();
+
+  const [dossier, setDossier] = useState<BuyerDossier | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // Review Modals State
+  const [activeModal, setActiveModal] = useState<"REQUEST_CHANGES" | "VERIFY" | "REJECT" | "SUSPEND" | null>(null);
+  const [changesNotes, setChangesNotes] = useState("");
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [suspensionReason, setSuspensionReason] = useState("");
+  const [adminNote, setAdminNote] = useState("");
+
+  // Internal Note Creation Form
+  const [newNoteText, setNewNoteText] = useState("");
+  const [newNoteCategory, setNewNoteCategory] = useState<
+    "GENERAL" | "COMPLIANCE" | "FINANCIAL" | "MANDATE" | "RISK"
+  >("GENERAL");
+  const [submittingNote, setSubmittingNote] = useState(false);
+
+  const isAuthorized =
+    user &&
+    (user.permissions.includes("buyers.read") ||
+      user.roles.some((r) =>
+        ["SUPER_ADMIN", "ADMIN", "VERIFICATION_MANAGER"].includes(r)
+      ));
+
+  const canVerify =
+    user &&
+    (user.roles.includes("SUPER_ADMIN") ||
+      user.permissions.includes("buyers.verify"));
+
+  const canSuspend =
+    user &&
+    (user.roles.includes("SUPER_ADMIN") ||
+      user.permissions.includes("buyers.suspend"));
+
+  const canReview =
+    user &&
+    (user.roles.includes("SUPER_ADMIN") ||
+      user.roles.includes("ADMIN") ||
+      user.permissions.includes("buyers.review"));
+
+  const fetchDossier = useCallback(async () => {
+    if (!isAuthorized || !buyerId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/admin/buyers/${buyerId}`);
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error?.message || "Failed to load buyer dossier.");
+      }
+      setDossier(json.data.dossier);
+    } catch (err: any) {
+      setError(err.message || "Failed to load buyer dossier.");
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthorized, buyerId]);
+
+  useEffect(() => {
+    if (!authLoading && isAuthorized) {
+      fetchDossier();
+    }
+  }, [authLoading, isAuthorized, fetchDossier]);
+
+  const handleAction = async (action: "START_REVIEW" | "REQUEST_CHANGES" | "VERIFY" | "REJECT" | "SUSPEND") => {
+    setActionLoading(true);
+    setError(null);
+    try {
+      const payload: any = { action };
+      if (action === "REQUEST_CHANGES") {
+        if (!changesNotes.trim()) {
+          alert("Please describe the specific revisions required from the buyer.");
+          setActionLoading(false);
+          return;
+        }
+        payload.changesRequestedNotes = changesNotes.trim();
+        if (adminNote.trim()) payload.notes = adminNote.trim();
+      } else if (action === "REJECT") {
+        if (!rejectionReason.trim()) {
+          alert("Please provide the formal reason for rejection.");
+          setActionLoading(false);
+          return;
+        }
+        payload.rejectionReason = rejectionReason.trim();
+        if (adminNote.trim()) payload.notes = adminNote.trim();
+      } else if (action === "SUSPEND") {
+        if (!suspensionReason.trim()) {
+          alert("Please provide the formal reason for suspending this buyer.");
+          setActionLoading(false);
+          return;
+        }
+        payload.suspensionReason = suspensionReason.trim();
+        if (adminNote.trim()) payload.notes = adminNote.trim();
+      } else if (action === "VERIFY") {
+        if (adminNote.trim()) payload.notes = adminNote.trim();
+      }
+
+      const res = await fetch(`/api/v1/admin/buyers/${buyerId}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error?.message || "Action execution failed.");
+      }
+
+      setActiveModal(null);
+      setChangesNotes("");
+      setRejectionReason("");
+      setSuspensionReason("");
+      setAdminNote("");
+      await fetchDossier();
+    } catch (err: any) {
+      alert(`Action error: ${err.message}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAddInternalNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newNoteText.trim()) return;
+
+    setSubmittingNote(true);
+    try {
+      const res = await fetch(`/api/v1/admin/buyers/${buyerId}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: newNoteText.trim(),
+          category: newNoteCategory,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error?.message || "Failed to add internal note.");
+      }
+
+      setNewNoteText("");
+      await fetchDossier();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setSubmittingNote(false);
+    }
+  };
+
+  if (authLoading || loading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-12 text-slate-500 gap-3">
+        <RefreshCw className="w-8 h-8 animate-spin text-[#1557A6]" />
+        <span className="text-sm font-medium">Loading buyer dossier records...</span>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center space-y-4">
+          <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto">
+            <Lock className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-slate-900">Restricted Console</h2>
+          <p className="text-sm text-slate-600">
+            Administrative permissions (`buyers.read`) are required to inspect this buyer dossier.
+          </p>
+          <div className="pt-2">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#1557A6] text-white text-xs font-semibold rounded-md shadow"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Return to Dashboard</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !dossier) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center space-y-4">
+          <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto" />
+          <h2 className="text-lg font-bold text-slate-900">Dossier Unavailable</h2>
+          <p className="text-sm text-slate-600">{error || "Buyer dossier was not found."}</p>
+          <Link
+            href="/admin/buyers"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#1557A6] text-white text-xs font-semibold rounded-md shadow"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to Buyers List</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const { profile, mandates, documents, internalNotes } = dossier;
+  const status = profile.onboardingStatus;
+
+  return (
+    <div className="flex-1 py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-8">
+      {/* Back Link */}
+      <div className="flex items-center justify-between">
+        <Link
+          href="/admin/buyers"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1557A6] hover:underline"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Buyer Verification Queue</span>
+        </Link>
+        <span className="text-xs text-slate-400 font-mono">Dossier ID: {profile.id}</span>
+      </div>
+
+      {/* Main Dossier Header Banner */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-[#1557A6] text-white flex items-center justify-center font-bold text-lg shadow">
+                {profile.legalName?.[0] || "B"}
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">{profile.legalName}</h1>
+                {profile.tradeName && (
+                  <p className="text-xs text-slate-500 font-medium">Trade Name: {profile.tradeName}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-600">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-800">
+                {profile.buyerType.replace(/_/g, " ")}
+              </span>
+              <span className="text-slate-400">•</span>
+              <span>{profile.entityType}</span>
+              <span className="text-slate-400">•</span>
+              <span>{profile.city}, {profile.state}, {profile.country}</span>
+              <span className="text-slate-400">•</span>
+              <span className="font-mono text-[11px] text-slate-500">
+                {mandates.length} Mandates
+              </span>
+            </div>
+          </div>
+
+          {/* Current Status & Action Triggers */}
+          <div className="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end gap-3 border-t lg:border-t-0 pt-4 lg:pt-0 border-slate-100">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 font-medium">Status:</span>
+              <span
+                className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border ${
+                  status === "VERIFIED"
+                    ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                    : status === "SUBMITTED"
+                    ? "bg-amber-50 text-amber-800 border-amber-300"
+                    : status === "UNDER_REVIEW"
+                    ? "bg-blue-50 text-blue-800 border-blue-300"
+                    : status === "CHANGES_REQUESTED"
+                    ? "bg-purple-50 text-purple-800 border-purple-300"
+                    : status === "SUSPENDED"
+                    ? "bg-red-50 text-red-800 border-red-300"
+                    : status === "REJECTED"
+                    ? "bg-rose-50 text-rose-800 border-rose-300"
+                    : "bg-slate-100 text-slate-700 border-slate-300"
+                }`}
+              >
+                {status === "VERIFIED" && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
+                {status === "UNDER_REVIEW" && <RefreshCw className="w-3.5 h-3.5 text-blue-600" />}
+                {status === "SUBMITTED" && <Clock className="w-3.5 h-3.5 text-amber-600" />}
+                {status === "SUSPENDED" && <Ban className="w-3.5 h-3.5 text-red-600" />}
+                {status === "REJECTED" && <XCircle className="w-3.5 h-3.5 text-rose-600" />}
+                <span>{status.replace(/_/g, " ")}</span>
+              </span>
+            </div>
+
+            {/* Workflow Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2">
+              {status === "SUBMITTED" && canReview && (
+                <button
+                  disabled={actionLoading}
+                  onClick={() => handleAction("START_REVIEW")}
+                  className="px-3.5 py-1.5 bg-[#1557A6] text-white text-xs font-semibold rounded-md shadow hover:bg-[#104789] transition"
+                >
+                  Start Review
+                </button>
+              )}
+
+              {(status === "SUBMITTED" || status === "UNDER_REVIEW") && canReview && (
+                <button
+                  disabled={actionLoading}
+                  onClick={() => setActiveModal("REQUEST_CHANGES")}
+                  className="px-3 py-1.5 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 text-xs font-semibold rounded-md transition"
+                >
+                  Request Changes
+                </button>
+              )}
+
+              {(status === "SUBMITTED" || status === "UNDER_REVIEW") && canVerify && (
+                <button
+                  disabled={actionLoading}
+                  onClick={() => setActiveModal("VERIFY")}
+                  className="px-3.5 py-1.5 bg-[#1557A6] text-white text-xs font-semibold rounded-md shadow hover:bg-[#104789] transition flex items-center gap-1.5"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Verify Buyer</span>
+                </button>
+              )}
+
+              {(status === "SUBMITTED" || status === "UNDER_REVIEW") && canVerify && (
+                <button
+                  disabled={actionLoading}
+                  onClick={() => setActiveModal("REJECT")}
+                  className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-xs font-semibold rounded-md transition"
+                >
+                  Reject
+                </button>
+              )}
+
+              {status !== "SUSPENDED" && canSuspend && (
+                <button
+                  disabled={actionLoading}
+                  onClick={() => setActiveModal("SUSPEND")}
+                  className="px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 text-xs font-semibold rounded-md transition"
+                >
+                  Suspend
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Change Request Notice */}
+        {profile.changesRequestedNotes && (
+          <div className="mt-6 p-4 bg-purple-50 rounded-lg border border-purple-200 text-xs text-purple-900 space-y-1">
+            <div className="font-bold flex items-center gap-1.5 text-purple-800">
+              <AlertCircle className="w-4 h-4 text-purple-600" />
+              <span>Pending Revisions Requested:</span>
+            </div>
+            <p className="whitespace-pre-line text-purple-950 pl-5">{profile.changesRequestedNotes}</p>
+          </div>
+        )}
+
+        {/* Suspension Notice */}
+        {profile.suspensionReason && (
+          <div className="mt-6 p-4 bg-red-50 rounded-lg border border-red-200 text-xs text-red-900 space-y-1">
+            <div className="font-bold flex items-center gap-1.5 text-red-800">
+              <Ban className="w-4 h-4 text-red-600" />
+              <span>Account Suspended:</span>
+            </div>
+            <p className="whitespace-pre-line text-red-950 pl-5">{profile.suspensionReason}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Main Grid: Details & Internal Notes */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left 2 Cols: Comprehensive Submission Records */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Section 1: Entity & Contact Profile */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-3 text-xs font-bold text-[#1557A6] uppercase tracking-wider">
+              <Users className="w-4 h-4" />
+              <span>Entity Profile & Authorized Deal Representative</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase">Registration / CIN</span>
+                <span className="font-mono font-medium text-slate-800">{profile.registrationNumber || "Not Applicable"}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase">Established Year</span>
+                <span className="font-medium text-slate-800">{profile.yearEstablished || "—"}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase">Authorized Contact</span>
+                <span className="font-medium text-slate-800">{profile.contactName} ({profile.designation})</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase">Email / Mobile</span>
+                <span className="font-medium text-slate-800">{profile.email} • {profile.phone}</span>
+              </div>
+            </div>
+
+            {/* Fund Metrics if present */}
+            {(profile.aum || profile.fundSize) && (
+              <div className="pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                {profile.aum && (
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase">AUM</span>
+                    <span className="font-mono font-bold text-slate-800">₹{(profile.aum / 10000000).toFixed(1)} Cr</span>
+                  </div>
+                )}
+                {profile.fundSize && (
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase">Fund Size</span>
+                    <span className="font-mono font-bold text-slate-800">₹{(profile.fundSize / 10000000).toFixed(1)} Cr</span>
+                  </div>
+                )}
+                {profile.currentVintage && (
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase">Vintage</span>
+                    <span className="font-medium text-slate-800">{profile.currentVintage}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: Acquisition Mandates */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-xs font-bold text-[#1557A6] uppercase tracking-wider">
+                <Target className="w-4 h-4" />
+                <span>Active Acquisition & Investment Mandates ({mandates.length})</span>
+              </div>
+              <span className="text-[10px] font-semibold text-slate-500 uppercase">Deterministic Match Inputs</span>
+            </div>
+
+            {mandates.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-400 bg-slate-50 rounded-lg">
+                No acquisition mandates lodged.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {mandates.map((m) => (
+                  <div key={m.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-3 text-xs">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-sm">{m.name}</h4>
+                        {m.description && <p className="text-slate-600 text-xs mt-0.5">{m.description}</p>}
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        {m.status}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                      <div>
+                        <span className="text-slate-400 text-[10px] uppercase block">Min Investment</span>
+                        <span className="font-mono font-bold text-slate-800">
+                          ₹{(m.minInvestment / 10000000).toFixed(2)} Cr
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-[10px] uppercase block">Max Investment</span>
+                        <span className="font-mono font-bold text-slate-800">
+                          ₹{(m.maxInvestment / 10000000).toFixed(2)} Cr
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-[10px] uppercase block">Target Revenue</span>
+                        <span className="font-mono text-slate-700">
+                          ₹{(m.revenueMin / 10000000).toFixed(1)} Cr+
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-[10px] uppercase block">Control Preference</span>
+                        <span className="font-medium text-slate-700">{m.controlPreference.replace(/_/g, " ")}</span>
+                      </div>
+                    </div>
+
+                    {/* Industries & Geographies */}
+                    <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-4">
+                      {m.targetIndustries && m.targetIndustries.length > 0 && (
+                        <div>
+                          <span className="text-slate-400 text-[10px] uppercase block">Sectors</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {m.targetIndustries.map((ind, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-white border border-slate-200 text-[#1557A6] rounded text-[10px] font-semibold">
+                                {ind.industry}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {m.targetGeographies && m.targetGeographies.length > 0 && (
+                        <div>
+                          <span className="text-slate-400 text-[10px] uppercase block">Geography</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {m.targetGeographies.map((geo, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded text-[10px] font-semibold">
+                                {geo.region.replace(/_/g, " ")}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Section 3: Document Vault */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-xs font-bold text-[#1557A6] uppercase tracking-wider">
+                <FileText className="w-4 h-4" />
+                <span>Verified Private Document Vault ({documents.length})</span>
+              </div>
+              <span className="text-[10px] text-slate-500 font-semibold uppercase">Anti-Tamper Magic Bytes</span>
+            </div>
+
+            {documents.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-400 bg-slate-50 rounded-lg">
+                No documents uploaded into buyer vault.
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {documents.map((doc) => (
+                  <div key={doc.id} className="py-3 flex items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-[#1557A6]" />
+                        <span className="text-xs font-bold text-slate-800">{doc.originalFilename}</span>
+                        <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                          {doc.documentType.replace(/_/g, " ")}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                        <span>{(doc.fileSizeBytes / (1024 * 1024)).toFixed(2)} MB</span>
+                        <span>•</span>
+                        <span className="font-mono text-[10px]">SHA-256: {doc.checksumSha256.slice(0, 12)}...</span>
+                      </div>
+                    </div>
+
+                    <a
+                      href={`/api/v1/buyer/documents/${doc.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#1557A6] bg-[#EEF5FB] hover:bg-[#EEF5FB] rounded-md transition shadow-sm"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download</span>
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right 1 Col: Verification Desk & Internal Notes */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-3 text-xs font-bold text-[#1557A6] uppercase tracking-wider">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Buyer Diligence Checklist</span>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="flex items-center justify-between p-2 rounded bg-slate-50 border border-slate-100">
+                <span className="text-slate-600">Entity Incorporation</span>
+                <span className="font-semibold text-emerald-700 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Verified
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded bg-slate-50 border border-slate-100">
+                <span className="text-slate-600">Active Mandates</span>
+                <span className="font-semibold text-slate-800">{mandates.length} Registered</span>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded bg-slate-50 border border-slate-100">
+                <span className="text-slate-600">Proof of Funds / Vault</span>
+                <span className="font-semibold text-slate-800">{documents.length} Files Lodged</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Internal Notes Panel */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-900 uppercase tracking-wider">
+                <MessageSquare className="w-4 h-4 text-[#1557A6]" />
+                <span>Internal Review Notes</span>
+              </div>
+              <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                Internal Only
+              </span>
+            </div>
+
+            <p className="text-[11px] text-slate-500">
+              Confidential internal notes are NEVER exposed to the buyer or counterparty.
+            </p>
+
+            {/* Existing Notes Feed */}
+            <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+              {!internalNotes || internalNotes.length === 0 ? (
+                <div className="p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-lg">
+                  No internal notes recorded yet.
+                </div>
+              ) : (
+                internalNotes.map((note) => (
+                  <div key={note.id} className="p-3 bg-slate-50 rounded-lg border border-slate-100 text-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                        {note.category}
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        {new Date(note.createdAt).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                    <p className="text-slate-800 whitespace-pre-line">{note.content}</p>
+                    {note.authorName && (
+                      <span className="block text-[10px] text-slate-400">By: {note.authorName}</span>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Add Note Form */}
+            <form onSubmit={handleAddInternalNote} className="space-y-3 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-slate-700 uppercase">Add Review Note</label>
+                <select
+                  value={newNoteCategory}
+                  onChange={(e) => setNewNoteCategory(e.target.value as any)}
+                  className="text-xs rounded border border-slate-300 px-2 py-0.5 bg-white text-slate-700"
+                >
+                  <option value="GENERAL">General</option>
+                  <option value="COMPLIANCE">Compliance</option>
+                  <option value="FINANCIAL">Financial</option>
+                  <option value="MANDATE">Mandate</option>
+                  <option value="RISK">Risk</option>
+                </select>
+              </div>
+
+              <textarea
+                value={newNoteText}
+                onChange={(e) => setNewNoteText(e.target.value)}
+                rows={3}
+                placeholder="Log internal remarks regarding financial capacity or mandate suitability..."
+                className="w-full text-xs rounded-md border border-slate-300 p-2.5 focus:ring-1 focus:ring-[#1557A6]"
+              />
+
+              <button
+                type="submit"
+                disabled={submittingNote || !newNoteText.trim()}
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-[#1557A6] text-white text-xs font-semibold rounded-md shadow hover:bg-[#104789] disabled:opacity-50 transition"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Save Note</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      {/* MODAL: Request Changes */}
+      {activeModal === "REQUEST_CHANGES" && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4">
+            <div className="flex items-center gap-2 text-purple-800">
+              <AlertCircle className="w-5 h-5 text-purple-600" />
+              <h3 className="text-base font-bold">Request Buyer Revisions</h3>
+            </div>
+            <p className="text-xs text-slate-600">
+              Unlocks the buyer profile and sets status to <strong>CHANGES_REQUESTED</strong>.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Required Changes (Visible to Buyer) *
+                </label>
+                <textarea
+                  value={changesNotes}
+                  onChange={(e) => setChangesNotes(e.target.value)}
+                  rows={4}
+                  placeholder="e.g. Please upload proof of available investment funds or mandate authorization letter."
+                  className="w-full text-xs rounded-md border border-slate-300 p-2.5"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                disabled={actionLoading}
+                onClick={() => setActiveModal(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-md transition"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={actionLoading}
+                onClick={() => handleAction("REQUEST_CHANGES")}
+                className="px-4 py-2 text-xs font-semibold text-white bg-purple-700 hover:bg-purple-800 rounded-md transition shadow"
+              >
+                {actionLoading ? "Submitting..." : "Send Request"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Verify Buyer */}
+      {activeModal === "VERIFY" && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4">
+            <div className="flex items-center gap-2 text-emerald-800">
+              <ShieldCheck className="w-5 h-5 text-emerald-600" />
+              <h3 className="text-base font-bold">Verify Buyer & Mandates</h3>
+            </div>
+            <p className="text-xs text-slate-600">
+              Confirming verification marks this buyer as <strong>VERIFIED</strong>. Mandates become eligible for opportunity matchmaking.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                disabled={actionLoading}
+                onClick={() => setActiveModal(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-md transition"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={actionLoading}
+                onClick={() => handleAction("VERIFY")}
+                className="px-4 py-2 text-xs font-semibold text-white bg-[#1557A6] hover:bg-[#104789] rounded-md transition shadow"
+              >
+                {actionLoading ? "Verifying..." : "Confirm & Verify Buyer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Reject Buyer */}
+      {activeModal === "REJECT" && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4">
+            <div className="flex items-center gap-2 text-rose-800">
+              <XCircle className="w-5 h-5 text-rose-600" />
+              <h3 className="text-base font-bold">Reject Buyer Dossier</h3>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Rejection Reason *</label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={3}
+                placeholder="Reason for rejection..."
+                className="w-full text-xs rounded-md border border-slate-300 p-2.5"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                disabled={actionLoading}
+                onClick={() => setActiveModal(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-md transition"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={actionLoading}
+                onClick={() => handleAction("REJECT")}
+                className="px-4 py-2 text-xs font-semibold text-white bg-rose-700 hover:bg-rose-800 rounded-md transition shadow"
+              >
+                {actionLoading ? "Rejecting..." : "Confirm Rejection"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Suspend Buyer */}
+      {activeModal === "SUSPEND" && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4">
+            <div className="flex items-center gap-2 text-red-800">
+              <Ban className="w-5 h-5 text-red-600" />
+              <h3 className="text-base font-bold">Suspend Buyer Account</h3>
+            </div>
+            <p className="text-xs text-slate-600">
+              Suspension freezes all active acquisition mandates and prevents the buyer from initiating deal interests.
+            </p>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Suspension Reason *</label>
+              <textarea
+                value={suspensionReason}
+                onChange={(e) => setSuspensionReason(e.target.value)}
+                rows={3}
+                placeholder="Grounds for suspension (e.g. KYC failure, compliance flag)..."
+                className="w-full text-xs rounded-md border border-slate-300 p-2.5"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                disabled={actionLoading}
+                onClick={() => setActiveModal(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-md transition"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={actionLoading}
+                onClick={() => handleAction("SUSPEND")}
+                className="px-4 py-2 text-xs font-semibold text-white bg-red-700 hover:bg-red-800 rounded-md transition shadow"
+              >
+                {actionLoading ? "Suspending..." : "Confirm Suspension"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120" fill="none">
+  <!-- Scale-up India Logo Mark -->
+  <g transform="translate(15, 10)">
+    <!-- Map of India Base Silhouette in Deep Navy -->
+    <path d="M48 5 C52 10, 50 18, 56 22 C64 24, 72 32, 68 40 C78 44, 76 52, 66 56 C62 64, 52 82, 48 95 C44 82, 34 64, 30 56 C20 52, 18 44, 28 40 C24 32, 32 24, 40 22 C46 18, 44 10, 48 5 Z" fill="#0B1F3A"/>
+    
+    <!-- Circuit lines on Map in Royal / Secondary Blue -->
+    <path d="M48 25 L48 45" stroke="#2878C8" stroke-width="1.5" stroke-dasharray="2 2" opacity="0.8"/>
+    <path d="M36 38 L48 42 L60 38" stroke="#1557A6" stroke-width="1.4" opacity="0.8"/>
+
+    <!-- Rising Energy Arrows (Trident / Scale-Up Motif in Orange / Gold) -->
+    <!-- Left Wing Arrow -->
+    <path d="M30 72 L36 50 L42 54 L36 70 Z" fill="#F59E0B"/>
+    <polygon points="36,44 28,54 35,54" fill="#FDBA3B"/>
+    
+    <!-- Right Wing Arrow -->
+    <path d="M66 72 L60 50 L54 54 L60 70 Z" fill="#F59E0B"/>
+    <polygon points="60,44 68,54 61,54" fill="#FDBA3B"/>
+    
+    <!-- South Anchor / Base Arrow -->
+    <path d="M48 88 L48 68" stroke="#F59E0B" stroke-width="3.5" stroke-linecap="round"/>
+    <polygon points="48,60 42,70 54,70" fill="#F59E0B"/>
+
+    <!-- Central Skyward Tower Arrow -->
+    <path d="M48 60 L48 12" stroke="#0B1F3A" stroke-width="4.5" stroke-linecap="round"/>
+    <polygon points="48,2 38,18 58,18" fill="#1557A6"/>
+    
+    <!-- Ashoka Chakra Symbol -->
+    <circle cx="48" cy="38" r="5" stroke="#FFFFFF" stroke-width="1.5" fill="#1557A6"/>
+    <circle cx="48" cy="38" r="2" fill="#F59E0B"/>
+  </g>
+
+  <!-- Typography: Scale-up India in Deep Navy -->
+  <text x="110" y="60" font-family="'Inter', system-ui, -apple-system, sans-serif" font-size="33" font-weight="800" fill="#0B1F3A" letter-spacing="-0.5">Scale-up India</text>
+  
+  <!-- Subtitle: Empowering Tomorrow's Enterprises in Primary Blue -->
+  <text x="112" y="82" font-family="'Inter', system-ui, -apple-system, sans-serif" font-size="12" font-weight="600" fill="#1557A6" letter-spacing="0.3">Empowering Tomorrow's Enterprises</text>
+</svg>

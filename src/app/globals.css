@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Master Color Palette */
+  --color-navy: #0B1F3A;
+  --color-primary: #1557A6;
+  --color-primary-light: #2878C8;
+  --color-accent: #F59E0B;
+  --color-accent-light: #FDBA3B;
+
+  /* Neutrals */
+  --color-background: #F7F9FC;
+  --color-surface: #FFFFFF;
+  --color-surface-soft: #EEF5FB;
+  --color-text: #101828;
+  --color-text-secondary: #344054;
+  --color-text-muted: #667085;
+  --color-border: #D9E2EC;
+
+  /* Functional Status */
+  --color-success: #12B76A;
+  --color-warning: #F79009;
+  --color-error: #D92D20;
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #0B1F3A 0%, #1557A6 55%, #2878C8 100%);
+  --gradient-hero: linear-gradient(180deg, #0B1F3A 0%, #102B4E 60%, #1557A6 100%);
+
+  /* Backward Compatibility */
+  --brand-dark: #0B1F3A;
+  --brand-secondary: #2878C8;
+  --brand-surface: #F7F9FC;
+  --brand-accent: #F59E0B;
+  --brand-white: #FFFFFF;
+}
+
+body {
+  color: var(--color-text);
+  background-color: var(--color-background);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Institutional Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F7F9FC;
+}
+::-webkit-scrollbar-thumb {
+  background: #D9E2EC;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #1557A6;
+}
+
+/* Reusable Enterprise Utility Components */
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#1557A6] hover:bg-[#2878C8] text-white font-semibold text-xs sm:text-sm rounded-lg shadow-sm transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white hover:bg-[#EEF5FB] text-[#0B1F3A] border border-[#D9E2EC] font-semibold text-xs sm:text-sm rounded-lg transition-all duration-200 shadow-sm disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .btn-accent {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#F59E0B] hover:bg-[#FDBA3B] text-[#0B1F3A] font-bold text-xs sm:text-sm rounded-lg shadow-sm transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .card-enterprise {
+    @apply bg-white border border-[#D9E2EC] rounded-xl shadow-sm transition-all duration-200 hover:border-[#2878C8]/60 hover:shadow-md;
+  }
+
+  .input-enterprise {
+    @apply w-full px-3.5 py-2.5 bg-white border border-[#D9E2EC] text-[#101828] placeholder-[#98A2B3] text-xs sm:text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1557A6]/20 focus:border-[#1557A6] transition-all;
+  }
+
+  .hero-gradient {
+    background: linear-gradient(180deg, #0B1F3A 0%, #102B4E 60%, #1557A6 100%);
+  }
+
+  .navy-gradient {
+    background: linear-gradient(135deg, #0B1F3A 0%, #1557A6 55%, #2878C8 100%);
+  }
+}

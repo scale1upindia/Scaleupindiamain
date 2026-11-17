@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 100" fill="none">
+  <!-- Crescent Swoosh Logo Mark (Left) -->
+  <g transform="translate(10, 10)">
+    <!-- Dark Navy Upper-Left Swoop Arc -->
+    <path d="M40 8 C22 14, 10 32, 10 52 C10 66, 16 76, 26 82 C22 74, 18 64, 18 52 C18 36, 26 22, 40 16 Z" fill="#1C355E"/>
+    
+    <!-- Deep Blue Inner Arc Sweep -->
+    <path d="M48 10 C32 18, 22 34, 22 52 C22 68, 30 80, 42 86 C32 80, 26 70, 26 54 C26 40, 34 26, 48 18 Z" fill="#1C355E" opacity="0.9"/>
+    
+    <!-- Bright Royal Blue Lower-Right Swoop -->
+    <path d="M14 70 C24 84, 42 90, 58 86 C74 80, 84 66, 84 50 C84 42, 80 34, 74 26 C82 34, 88 44, 88 54 C88 72, 74 88, 54 92 C36 94, 20 86, 14 70 Z" fill="#1E88E5"/>
+    
+    <!-- Inner Accent Swoosh -->
+    <path d="M22 74 C32 84, 46 88, 60 84 C72 78, 80 66, 80 52 C78 62, 70 72, 58 78 C46 82, 32 80, 22 74 Z" fill="#0288D1"/>
+  </g>
+
+  <!-- Typography: Ideal Corporate Synergy LLP -->
+  <text x="105" y="58" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="28" font-weight="800" fill="#1C355E" letter-spacing="-0.5">Ideal Corporate Synergy LLP</text>
+  
+  <!-- Subtitle suffix: (ics) in stylized italics -->
+  <text x="445" y="58" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="28" font-weight="800" font-style="italic" fill="#1C355E"> (ics)</text>
+</svg>
