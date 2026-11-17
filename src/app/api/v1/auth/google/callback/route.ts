@@ -5,6 +5,7 @@ import {
   exchangeGoogleCode,
   fetchGoogleUserInfo,
   processGoogleIdentity,
+  getPublicBaseUrl,
 } from "@/domains/auth/google";
 import {
   OAUTH_STATE_COOKIE_NAME,
@@ -14,7 +15,8 @@ import {
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
-  const loginUrl = new URL("/login", req.url);
+  const baseUrl = getPublicBaseUrl(req);
+  const loginUrl = new URL("/login", baseUrl);
 
   // 1. Check for errors returned by Google provider
   const googleError = searchParams.get("error");
@@ -67,9 +69,6 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || undefined;
-    const proto = req.headers.get("x-forwarded-proto") || "http";
-    const baseUrl = host ? `${proto}://${host}` : undefined;
     const redirectUri = getGoogleRedirectUri(baseUrl);
 
     // 5. Exchange code for Google access token
@@ -89,8 +88,8 @@ export async function GET(req: NextRequest) {
       context: { ip, userAgent },
     });
 
-    // 9. Redirect to authenticated destination
-    const destinationUrl = new URL(result.redirectPath, req.url);
+    // 9. Redirect to authenticated destination using canonical public domain
+    const destinationUrl = new URL(result.redirectPath, baseUrl);
     const response = NextResponse.redirect(destinationUrl);
 
     // 10. Attach session cookie and clear temporary OAuth state cookie

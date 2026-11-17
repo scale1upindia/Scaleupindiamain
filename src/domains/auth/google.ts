@@ -59,11 +59,49 @@ export function getGoogleOAuthConfig(): GoogleOAuthConfig {
 }
 
 /**
+ * Resolves the canonical public base URL of the platform.
+ * Ensures internal container ports (like localhost:10000 on Render) are never leaked to user redirects.
+ */
+export function getPublicBaseUrl(reqOrHeaders?: {
+  headers?: { get: (name: string) => string | null };
+}): string {
+  // 1. Highest priority: explicit production environment variable
+  const envBase = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_BASE_URL;
+  if (envBase && envBase.trim() && !envBase.includes("localhost:10000")) {
+    return envBase.trim().replace(/\/+$/, "");
+  }
+
+  // 2. Derive from request headers (x-forwarded-host has precedence on reverse proxies)
+  if (reqOrHeaders?.headers) {
+    const forwardedHost = reqOrHeaders.headers.get("x-forwarded-host");
+    const host = forwardedHost || reqOrHeaders.headers.get("host");
+    const proto =
+      reqOrHeaders.headers.get("x-forwarded-proto") ||
+      (forwardedHost || (host && !host.includes("localhost")) ? "https" : "http");
+
+    if (host && !host.includes("localhost:10000") && !host.includes("127.0.0.1:10000")) {
+      return `${proto}://${host}`;
+    }
+  }
+
+  // 3. Fallback to production Render domain if running in production
+  if (process.env.NODE_ENV === "production") {
+    return "https://scaleup-india.onrender.com";
+  }
+
+  // 4. Local development fallback
+  return "http://localhost:3000";
+}
+
+/**
  * Derives the canonical OAuth redirect URI based on base URL or request headers
  */
 export function getGoogleRedirectUri(baseUrl?: string): string {
-  const envBase = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL;
-  const canonicalBase = (baseUrl || envBase || "http://localhost:3000").replace(/\/+$/, "");
+  let base = baseUrl;
+  if (!base || base.includes("localhost:10000") || base.includes("127.0.0.1:10000")) {
+    base = getPublicBaseUrl();
+  }
+  const canonicalBase = base.replace(/\/+$/, "");
   return `${canonicalBase}/api/v1/auth/google/callback`;
 }
 

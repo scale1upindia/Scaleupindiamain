@@ -21,7 +21,23 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/notifications");
 
   if (isProtectedRoute && !sessionCookie?.value) {
-    const loginUrl = new URL("/login", request.url);
+    const envBase = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_BASE_URL;
+    const forwardedHost = request.headers.get("x-forwarded-host");
+    const host = forwardedHost || request.headers.get("host");
+    const proto =
+      request.headers.get("x-forwarded-proto") ||
+      (forwardedHost || (host && !host.includes("localhost")) ? "https" : "http");
+
+    let base =
+      envBase && !envBase.includes("localhost:10000")
+        ? envBase.replace(/\/+$/, "")
+        : host && !host.includes("localhost:10000")
+        ? `${proto}://${host}`
+        : process.env.NODE_ENV === "production"
+        ? "https://scaleup-india.onrender.com"
+        : "http://localhost:3000";
+
+    const loginUrl = new URL("/login", base);
     loginUrl.searchParams.set("redirect", pathname);
     const redirectResponse = NextResponse.redirect(loginUrl);
     applySecurityHeaders(redirectResponse.headers);
@@ -34,7 +50,7 @@ export function middleware(request: NextRequest) {
 
   if (isApiRoute && isMutationMethod) {
     const origin = request.headers.get("origin");
-    const host = request.headers.get("host");
+    const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
 
     // If Origin header is provided by browser, verify it matches the current Host
     if (origin && host) {
@@ -42,8 +58,12 @@ export function middleware(request: NextRequest) {
         `http://${host}`,
         `https://${host}`,
         "http://localhost:3000",
+        "https://scaleup-india.onrender.com",
         "https://scaleupindia.gov.in",
       ];
+      if (process.env.NEXT_PUBLIC_APP_URL) {
+        allowedOrigins.push(process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, ""));
+      }
       // Webhook paths are exempted from browser origin check since they are server-to-server calls
       const isWebhook = pathname.includes("/webhook");
       if (!isWebhook && !allowedOrigins.some((o) => origin.startsWith(o))) {

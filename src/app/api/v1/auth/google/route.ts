@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   getGoogleOAuthConfig,
   buildGoogleAuthUrl,
+  getPublicBaseUrl,
 } from "@/domains/auth/google";
 import { setOAuthCookieOnResponse } from "@/lib/security/cookies";
 
 export async function GET(req: NextRequest) {
+  const baseUrl = getPublicBaseUrl(req);
+  const loginUrl = new URL("/login", baseUrl);
+
   try {
     const config = getGoogleOAuthConfig();
     const searchParams = req.nextUrl.searchParams;
@@ -22,14 +26,9 @@ export async function GET(req: NextRequest) {
 
     // Check if Google OAuth credentials are configured
     if (!config.isConfigured) {
-      const loginUrl = new URL("/login", req.url);
       loginUrl.searchParams.set("error", "google_auth_not_configured");
       return NextResponse.redirect(loginUrl);
     }
-
-    const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || undefined;
-    const proto = req.headers.get("x-forwarded-proto") || "http";
-    const baseUrl = host ? `${proto}://${host}` : undefined;
 
     const { authUrl, stateToken } = buildGoogleAuthUrl({
       baseUrl,
@@ -42,7 +41,6 @@ export async function GET(req: NextRequest) {
 
     return response;
   } catch (error: any) {
-    const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("error", encodeURIComponent(error?.message || "oauth_initiation_failed"));
     return NextResponse.redirect(loginUrl);
   }
