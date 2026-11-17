@@ -43,7 +43,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const { register } = useAuth();
 
-  // Multi-role selection state
+  // Single-role selection state (Option A)
   const [selectedRoles, setSelectedRoles] = useState<RoleOption[]>(["PROMOTER"]);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -53,15 +53,8 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const toggleRole = (role: RoleOption) => {
-    setSelectedRoles((prev) => {
-      if (prev.includes(role)) {
-        if (prev.length === 1) return prev; // Keep at least one role
-        return prev.filter((r) => r !== role);
-      } else {
-        return [...prev, role];
-      }
-    });
+  const selectRole = (role: RoleOption) => {
+    setSelectedRoles([role]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -120,16 +113,16 @@ export default function RegisterPage() {
         {/* Step 1: Role Selection */}
         <div className="mt-8">
           <label className="block text-xs font-bold text-[#0B1F3A] uppercase tracking-wider mb-1.5">
-            Step 1: What brings you to Scale-up India? (Select all that apply)
+            Step 1: What brings you to Scale-up India? (Select Your Role)
           </label>
           <p className="text-[11px] text-[#667085] mb-3">
-            You can act in multiple capacities across deals (e.g. Promoter selling one venture while acquiring another).
+            Choose your primary account type. You can manage mandates and listings from your workspace.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Option 1: Promoter / Seller */}
             <div
-              onClick={() => toggleRole("PROMOTER")}
+              onClick={() => selectRole("PROMOTER")}
               className={`cursor-pointer p-4 rounded-xl border-2 transition-all text-left flex flex-col justify-between ${
                 selectedRoles.includes("PROMOTER")
                   ? "border-[#1557A6] bg-[#EEF5FB] shadow-sm"
@@ -154,7 +147,7 @@ export default function RegisterPage() {
 
             {/* Option 2: Buyer / Investor */}
             <div
-              onClick={() => toggleRole("BUYER")}
+              onClick={() => selectRole("BUYER")}
               className={`cursor-pointer p-4 rounded-xl border-2 transition-all text-left flex flex-col justify-between ${
                 selectedRoles.includes("BUYER")
                   ? "border-[#1557A6] bg-[#EEF5FB] shadow-sm"
@@ -179,7 +172,7 @@ export default function RegisterPage() {
 
             {/* Option 3: Strategic Partner / JV */}
             <div
-              onClick={() => toggleRole("PARTNER")}
+              onClick={() => selectRole("PARTNER")}
               className={`cursor-pointer p-4 rounded-xl border-2 transition-all text-left flex flex-col justify-between ${
                 selectedRoles.includes("PARTNER")
                   ? "border-[#1557A6] bg-[#EEF5FB] shadow-sm"
